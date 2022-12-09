@@ -64,3 +64,16 @@ bart-base-chinese/README.md
 bart-base-chinese/special_tokens_map.json
 bart-base-chinese/tokenizer_config.json
 bart-base-chinese/vocab.txt
+wandb/run-20221208_203347-1uyxzd01/run-1uyxzd01.wandb
+wandb/run-20221208_203347-1uyxzd01/files/conda-environment.yaml
+wandb/run-20221208_203347-1uyxzd01/files/config.yaml
+wandb/run-20221208_203347-1uyxzd01/files/output.log
+wandb/run-20221208_203347-1uyxzd01/files/requirements.txt
+wandb/run-20221208_203347-1uyxzd01/files/wandb-metadata.json
+wandb/run-20221208_203347-1uyxzd01/files/wandb-summary.json
+wandb/run-20221208_203347-1uyxzd01/logs/debug-internal.log
+wandb/run-20221208_203347-1uyxzd01/logs/debug.log
+.gitignore
+__pycache__/model.cpython-37.pyc
+__pycache__/process.cpython-37.pyc
+__pycache__/utils.cpython-37.pyc

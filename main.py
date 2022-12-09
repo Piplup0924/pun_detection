@@ -26,7 +26,7 @@ sys.path.append(os.path.dirname(BASE_DIR))
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--is_train", type=str, default="False")
+    parser.add_argument("--is_train", type=str, default="True")
     parser.add_argument("--gpu", type=str, default="0,1,2,3")
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -47,6 +47,9 @@ def parse_args():
     parser.add_argument('--warmup_steps', type=int, default=600, help='warm up steps')
     parser.add_argument('--max_grad_norm', default=2.0, type=float, required=False)
     parser.add_argument('--log_step', default=10, type=int, required=False, help='多少步汇报一次loss')
+    parser.add_argument("--is_resume", type=str, default="False", help="是否重新恢复训练")
+    parser.add_argument("--resume_checkpoint_path", type=str, default="", required=False, help="训练断点文件的路径")
+
 
 
     args = parser.parse_args()
@@ -243,6 +246,14 @@ def train(model, logger, train_dataloader, dev_dataloader, config, device):
     scheduler = transformers.get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps = config.warmup_steps, num_training_steps = t_total
     )
+
+    # loading checkpoint if resume
+    if eval(config.is_resume):
+        checkpoint = torch.load(config.resume_checkpoint_path)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+
     logger.info("starting training")
 
     # 记录每个epoch的训练和验证loss
