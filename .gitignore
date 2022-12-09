@@ -64,3 +64,6 @@ bart-base-chinese/README.md
 bart-base-chinese/special_tokens_map.json
 bart-base-chinese/tokenizer_config.json
 bart-base-chinese/vocab.txt
+__pycache__/model.cpython-37.pyc
+__pycache__/process.cpython-37.pyc
+__pycache__/utils.cpython-37.pyc

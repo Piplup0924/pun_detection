@@ -3,7 +3,7 @@ import sys
 import argparse
 from datetime import datetime
 
-
+import pandas as pd
 import torch
 from torch import nn
 from torch.nn import DataParallel
@@ -27,7 +27,7 @@ sys.path.append(os.path.dirname(BASE_DIR))
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--is_train", type=str, default="False")
-    parser.add_argument("--gpu", type=str, default="0,1,2,3")
+    parser.add_argument("--gpu", type=str, default="0")
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3, required=False)
@@ -35,7 +35,8 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=20220924)
     parser.add_argument("--max_seq_length", type=int, default=512)
     parser.add_argument("--num_classes", type=int, default=2)
-    parser.add_argument("--pretrained_path", type=str, default="./bart-base-chinese")
+    parser.add_argument("--pretrained_path", type=str, default="./saved_models/exp0/best_model_epoch_7_f1_0.7499305362600722")
+    parser.add_argument("--pretrained_tokenizer_path", type=str, default="./bart-base-chinese")
     parser.add_argument("--train_path", type=str, default="../Data/Dataset/CCL2018_data_3_train.json")
     parser.add_argument("--dev_path", type=str, default="../Data/Dataset/CCL2018_data_3_valid.json")
     parser.add_argument("--test_path", type=str, default="../Data/Dataset/CCL2018_data_3_valid.json", required=False)
@@ -47,7 +48,7 @@ def parse_args():
     parser.add_argument('--warmup_steps', type=int, default=600, help='warm up steps')
     parser.add_argument('--max_grad_norm', default=2.0, type=float, required=False)
     parser.add_argument('--log_step', default=10, type=int, required=False, help='多少步汇报一次loss')
-
+    parser.add_argument("--num_workers", type=int, default=0)
 
     args = parser.parse_args()
     # output = os.path.join(args.output, args.label)
@@ -91,8 +92,8 @@ def load_test_data(logger, config, mode="same"):
     Return test_dataloader, tokenizer
     """
     logger.info("loading test dataset!")
+    processor = Processor(config = config)
     if mode == "same":
-        processor = Processor(config = config)
         test_data, test_labels = processor.get_data(mode="test")
         logger.info("test_length: %d" % len(test_data))
 
@@ -100,7 +101,16 @@ def load_test_data(logger, config, mode="same"):
             test_data, test_labels, batch_size=config.batch_size, shuffle=False
         )
     else:
-        pass
+        ugc = pd.read_csv("../Data/ugc_funny.csv")
+        content = ugc["online_content"]
+        test_data = [i[3:-4] for i in content]
+        test_labels = [0 for _ in test_data]
+        logger.info("test_length: %d" % len(test_data))
+
+        test_loader = processor.create_dataloader(
+            test_data, test_labels, batch_size=config.batch_size, shuffle=False
+        )
+
     
     return test_loader, processor.tokenizer
 
@@ -286,8 +296,9 @@ def test(model, logger, test_dataloader, config, device, tokenizer):
     preds, texts = [], []
     try:
         with torch.no_grad():
-            for batch_idx, (input_ids, labels, attention_mask) in enumerate(test_dataloader):
+            for batch_idx, (input_ids, labels, attention_mask) in enumerate(tqdm(test_dataloader, desc="Testing ")):
                 input_ids = input_ids.to(device)    # [batch_size, seq_len]
+                labels = labels.to(device)
                 attention_mask = attention_mask.to(device)
                 outputs = model(input_ids, labels = labels, attention_mask=attention_mask)
                 logits = outputs.logits     # [batch_size, num_classes]
@@ -325,7 +336,7 @@ if __name__ == "__main__":
     utils.set_random_seed(config.seed)
 
     # set visible devices
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,4,5,6"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
     logger = utils.create_logger(config)
 
@@ -355,15 +366,15 @@ if __name__ == "__main__":
     # notes the config
     logger.info("config: {}".format(config))
 
-    # loading the train_dataloader and dev_dataloader
-    train_dataloader, dev_dataloader = load_data(logger=logger, config=config)
-
-    # loading the test_dataloader
-    test_dataloader, tokenizer = load_test_data(logger=logger, config=config, mode="same")
-
     if eval(config.is_train):
         wandb.watch(model, log="all")
+        # loading the train_dataloader and dev_dataloader
+        train_dataloader, dev_dataloader = load_data(logger=logger, config=config)
         train(model, logger, train_dataloader, dev_dataloader, config, device)
     else:
-        test(model, logger, test_dataloader, config, device, tokenizer)
-
+        # loading the test_dataloader
+        test_dataloader, tokenizer = load_test_data(logger=logger, config=config, mode="different")
+        text_list, pred_list = test(model, logger, test_dataloader, config, device, tokenizer)
+        with open(config.pretrained_path + "output.txt", "w") as f:
+            for i in range(len(text_list)):
+                f.write(text_list[i] + "\t" + str(pred_list[i]) + "\n")

@@ -94,7 +94,7 @@ class Processor(DataProcessor):
         self.train_path = config.train_path
         self.dev_path = config.dev_path
         self.test_path = config.test_path
-        self.tokenizer = BertTokenizerFast.from_pretrained(config.pretrained_path)
+        self.tokenizer = BertTokenizerFast.from_pretrained(config.pretrained_tokenizer_path)
         self.labels = config.num_classes
         self.config = config
 
@@ -112,7 +112,7 @@ class Processor(DataProcessor):
         # print(filename)
     
     def get_data(self, mode="train"):
-        [data, labels] = self.read_data(eval("self.%s_path" % mode))
+        data, labels = self.read_data(eval("self.%s_path" % mode))
         return data, labels
 
     def create_dataloader(self, texts, labels, batch_size, shuffle=True):
@@ -133,7 +133,7 @@ class Processor(DataProcessor):
             dataset=dataset,
             shuffle=shuffle,
             batch_size=batch_size,
-            num_workers=128,
+            num_workers=self.config.num_workers,
             pin_memory=True,
             )
         
