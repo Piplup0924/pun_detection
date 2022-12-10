@@ -67,3 +67,4 @@ bart-base-chinese/vocab.txt
 __pycache__/model.cpython-37.pyc
 __pycache__/process.cpython-37.pyc
 __pycache__/utils.cpython-37.pyc
+saved_models/exp0/best_model_epoch_7_f1_0.7499305362600722output.txt

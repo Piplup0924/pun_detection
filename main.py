@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument("--is_train", type=str, default="False")
     parser.add_argument("--gpu", type=str, default="0")
     parser.add_argument("--epochs", type=int, default=30)
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=192)
     parser.add_argument("--lr", type=float, default=1e-3, required=False)
     parser.add_argument("--eps", type=float, default=1e-8, required=False, help="AdamW中的eps")
     parser.add_argument("--seed", type=int, default=20220924)
@@ -48,6 +48,8 @@ def parse_args():
     parser.add_argument('--warmup_steps', type=int, default=600, help='warm up steps')
     parser.add_argument('--max_grad_norm', default=2.0, type=float, required=False)
     parser.add_argument('--log_step', default=10, type=int, required=False, help='多少步汇报一次loss')
+    parser.add_argument("--is_resume", type=str, default="False", help="是否重新恢复训练")
+    parser.add_argument("--resume_checkpoint_path", type=str, default="", required=False, help="训练断点文件的路径")
     parser.add_argument("--num_workers", type=int, default=0)
 
     args = parser.parse_args()
@@ -253,6 +255,14 @@ def train(model, logger, train_dataloader, dev_dataloader, config, device):
     scheduler = transformers.get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps = config.warmup_steps, num_training_steps = t_total
     )
+
+    # loading checkpoint if resume
+    if eval(config.is_resume):
+        checkpoint = torch.load(config.resume_checkpoint_path)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+
     logger.info("starting training")
 
     # 记录每个epoch的训练和验证loss
@@ -312,6 +322,7 @@ def test(model, logger, test_dataloader, config, device, tokenizer):
             logger.info("Test Finished!")
             # 将所有sentence集中到一个大列表中
             texts = [sentence for batch in texts for sentence in batch]
+            preds = [i for pred in preds for i in pred]
             return list(map(lambda x:"".join(x.split(" ")), texts)), preds
     except RuntimeError as exc:
         if "out of memory" in str(exc):
@@ -375,6 +386,6 @@ if __name__ == "__main__":
         # loading the test_dataloader
         test_dataloader, tokenizer = load_test_data(logger=logger, config=config, mode="different")
         text_list, pred_list = test(model, logger, test_dataloader, config, device, tokenizer)
-        with open(config.pretrained_path + "output.txt", "w") as f:
+        with open(config.pretrained_path + "_output1.txt", "w") as f:
             for i in range(len(text_list)):
                 f.write(text_list[i] + "\t" + str(pred_list[i]) + "\n")
