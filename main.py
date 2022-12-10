@@ -341,7 +341,7 @@ if __name__ == "__main__":
 
     if eval(config.is_train):
         wandb.init(project="pun_detection", name=config.label)
-        wandb.config = config
+        wandb.config.update(config)
     
     # set random seed 
     utils.set_random_seed(config.seed)
