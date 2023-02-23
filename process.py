@@ -76,6 +76,7 @@ class MyDataset(Dataset):
         return len(self.texts)
     
     def __getitem__(self, index):
+        # print(index)
         toks = self.tokenizer.tokenize(self.texts[index].lower())
         cur_example = InputExample(uid=index, toks=toks, labels=self.labels[index])
         cur_features = convert_example_to_features(cur_example, self.max_seq_length, self.tokenizer)
@@ -102,7 +103,7 @@ class Processor(DataProcessor):
         with open(filename, "r") as f:
             raw_data = json.load(f)
         text, labels = [], []
-        label_name = ["homophonic", "homographic"]
+        label_name = ["homophonic", "homographic", "reverse"]
         for i, name in enumerate(label_name):
             samples = raw_data[name]
             for sample in samples:
@@ -133,7 +134,7 @@ class Processor(DataProcessor):
             dataset=dataset,
             shuffle=shuffle,
             batch_size=batch_size,
-            num_workers=128,
+            num_workers=self.config.num_workers,
             pin_memory=True,
             )
         

@@ -34,21 +34,22 @@ def parse_args():
     parser.add_argument("--eps", type=float, default=1e-8, required=False, help="AdamW中的eps")
     parser.add_argument("--seed", type=int, default=20220924)
     parser.add_argument("--max_seq_length", type=int, default=512)
-    parser.add_argument("--num_classes", type=int, default=2)
+    parser.add_argument("--num_classes", type=int, default=3)
     parser.add_argument("--pretrained_path", type=str, default="./bart-base-chinese")
     parser.add_argument("--train_path", type=str, default="../Data/Dataset/CCL2018_data_3_train.json")
     parser.add_argument("--dev_path", type=str, default="../Data/Dataset/CCL2018_data_3_valid.json")
     parser.add_argument("--test_path", type=str, default="../Data/Dataset/CCL2018_data_3_valid.json", required=False)
     parser.add_argument("--output", type=str, default="./saved_models")
-    parser.add_argument("--label", type=str, default="exp2")
+    parser.add_argument("--label", type=str, default="exp5_3_classes")
     parser.add_argument("--train_num", type=int, default=-1, required=False)
     parser.add_argument("--dev_num", type=int, default=-1, required=False)
-    parser.add_argument('--gradient_accumulation_steps', default=1, type=int, required=False, help='梯度积累')
-    parser.add_argument('--warmup_steps', type=int, default=600, help='warm up steps')
+    parser.add_argument('--gradient_accumulation_steps', default=4, type=int, required=False, help='梯度积累')
+    parser.add_argument('--warmup_steps', type=int, default=700, help='warm up steps')
     parser.add_argument('--max_grad_norm', default=2.0, type=float, required=False)
     parser.add_argument('--log_step', default=10, type=int, required=False, help='多少步汇报一次loss')
     parser.add_argument("--is_resume", type=str, default="False", help="是否重新恢复训练")
     parser.add_argument("--resume_checkpoint_path", type=str, default="", required=False, help="训练断点文件的路径")
+    parser.add_argument("--num_workers", type=int, default=64)
 
 
 
@@ -336,7 +337,7 @@ if __name__ == "__main__":
     utils.set_random_seed(config.seed)
 
     # set visible devices
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,4,5,6"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5, 6, 7"
 
     logger = utils.create_logger(config)
 
@@ -366,15 +367,16 @@ if __name__ == "__main__":
     # notes the config
     logger.info("config: {}".format(config))
 
-    # loading the train_dataloader and dev_dataloader
-    train_dataloader, dev_dataloader = load_data(logger=logger, config=config)
-
-    # loading the test_dataloader
-    test_dataloader, tokenizer = load_test_data(logger=logger, config=config, mode="same")
-
     if eval(config.is_train):
         wandb.watch(model, log="all")
+        # loading the train_dataloader and dev_dataloader
+        train_dataloader, dev_dataloader = load_data(logger=logger, config=config)
         train(model, logger, train_dataloader, dev_dataloader, config, device)
     else:
-        test(model, logger, test_dataloader, config, device, tokenizer)
-
+        # loading the test_dataloader
+        test_dataloader, tokenizer = load_test_data(logger=logger, config=config, mode="different")
+        text_list, pred_list = test(model, logger, test_dataloader, config, device, tokenizer)
+        with open(config.pretrained_path + "_output1.txt", "w") as f:
+            for i in range(len(text_list)):
+                f.write(text_list[i] + "\t" + str(pred_list[i]) + "\n")
+                
